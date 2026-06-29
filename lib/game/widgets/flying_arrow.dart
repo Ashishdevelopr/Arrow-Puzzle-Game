@@ -25,6 +25,7 @@ class FlyingArrow extends StatefulWidget {
   final bool isDark;
   final int rows, cols;
   final double tileSize, gap;
+  final bool compact;
 
   const FlyingArrow({
     super.key,
@@ -34,6 +35,7 @@ class FlyingArrow extends StatefulWidget {
     required this.cols,
     required this.tileSize,
     required this.gap,
+    this.compact = false,
   });
 
   @override
@@ -113,6 +115,7 @@ class _FlyingArrowState extends State<FlyingArrow>
               painter: ArrowPainter(
                 direction: widget.data.direction,
                 color: color,
+                compact: widget.compact,
               ),
             ),
           ),

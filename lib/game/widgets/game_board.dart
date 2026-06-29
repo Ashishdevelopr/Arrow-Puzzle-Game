@@ -121,6 +121,7 @@ class _GameBoardState extends State<GameBoard> {
                     onTap: () => widget.onTap(r, c),
                     tileSize: tileSize,
                     isDark: isDark,
+                    compact: grid.rows > 6 || grid.cols > 6,
                   ),
                 ),
 
@@ -134,6 +135,7 @@ class _GameBoardState extends State<GameBoard> {
               cols: grid.cols,
               tileSize: tileSize,
               gap: gap,
+              compact: grid.rows > 6 || grid.cols > 6,
             ),
         ],
       ),

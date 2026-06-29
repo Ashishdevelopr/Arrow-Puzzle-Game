@@ -13,6 +13,7 @@ class ArrowWidget extends StatefulWidget {
   final VoidCallback onTap;
   final double tileSize;
   final bool isDark;
+  final bool compact;
 
   const ArrowWidget({
     super.key,
@@ -24,6 +25,7 @@ class ArrowWidget extends StatefulWidget {
     required this.onTap,
     required this.tileSize,
     required this.isDark,
+    this.compact = false,
   });
 
   @override
@@ -168,6 +170,7 @@ class _ArrowWidgetState extends State<ArrowWidget>
                 painter: ArrowPainter(
                   direction: widget.direction,
                   color: _arrowColor,
+                  compact: widget.compact,
                 ),
               ),
             ),

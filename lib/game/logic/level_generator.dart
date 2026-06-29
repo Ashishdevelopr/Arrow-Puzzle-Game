@@ -21,41 +21,72 @@ class LevelConfig {
 }
 
 class LevelGenerator {
-  static const int _maxAttempts = 10000;
+  // Higher attempt count so dense fills actually reach their target.
+  static const int _maxAttempts = 50000;
 
-  /// Generate a level using reverse generation — guaranteed solvable.
+  /// Reverse-generation: place arrows in reverse removal order → always solvable.
   static GridModel generate(LevelConfig config, {int seed = 0}) {
-    final rng = Random(seed);
-    final grid = GridModel(rows: config.rows, cols: config.cols);
-    final targetCount = (config.rows * config.cols * config.fillRatio).round();
-    int placed = 0;
-    int attempts = 0;
+    final targetCount =
+        (config.rows * config.cols * config.fillRatio).round().clamp(
+              1,
+              config.rows * config.cols,
+            );
 
-    while (placed < targetCount && attempts < _maxAttempts) {
-      attempts++;
+    // Run multiple attempts and keep the densest result.
+    GridModel best = GridModel(rows: config.rows, cols: config.cols);
+    int bestCount = 0;
 
-      // Gather candidate (cell, direction) pairs where the forward ray is clear.
-      final candidates = <_Candidate>[];
-      for (int r = 0; r < config.rows; r++) {
-        for (int c = 0; c < config.cols; c++) {
-          if (grid.cells[r][c] != null) continue;
-          for (final dir in Direction.values) {
-            if (_forwardRayClear(grid, r, c, dir)) {
-              final rayLen = _rayLength(grid, r, c, dir);
-              candidates.add(_Candidate(r, c, dir, rayLen));
-            }
-          }
-        }
+    // For hard levels try several seeds to find the densest packing.
+    final tries = config.difficulty == Difficulty.hard ? 4 : 1;
+
+    for (int t = 0; t < tries; t++) {
+      final g = _generateOnce(config, targetCount, Random(seed + t * 997));
+      final count = g.remainingCount;
+      if (count > bestCount) {
+        bestCount = count;
+        best = g;
       }
+      if (bestCount >= targetCount) break;
+    }
+
+    return best;
+  }
+
+  static GridModel _generateOnce(
+      LevelConfig config, int targetCount, Random rng) {
+    final grid = GridModel(rows: config.rows, cols: config.cols);
+    int placed = 0;
+    int stalls = 0;
+
+    while (placed < targetCount && stalls < _maxAttempts) {
+      // Gather all valid (cell, direction) candidates — forward ray must be clear.
+      final candidates = _buildCandidates(grid, config);
 
       if (candidates.isEmpty) break;
 
-      final candidate = _pickCandidate(candidates, config.difficulty, rng);
-      grid.setCell(candidate.r, candidate.c, candidate.dir);
+      final chosen = _pickCandidate(candidates, config.difficulty, rng);
+      grid.setCell(chosen.r, chosen.c, chosen.dir);
       placed++;
+      stalls = 0; // reset stall counter on each successful placement
     }
 
     return grid;
+  }
+
+  static List<_Candidate> _buildCandidates(GridModel grid, LevelConfig config) {
+    final result = <_Candidate>[];
+    for (int r = 0; r < config.rows; r++) {
+      for (int c = 0; c < config.cols; c++) {
+        if (grid.cells[r][c] != null) continue; // cell already occupied
+        for (final dir in Direction.values) {
+          if (_forwardRayClear(grid, r, c, dir)) {
+            final len = _rayLength(grid, r, c, dir);
+            result.add(_Candidate(r, c, dir, len));
+          }
+        }
+      }
+    }
+    return result;
   }
 
   /// True if every cell from (r,c) stepping in dir to the edge is empty.
@@ -89,15 +120,25 @@ class LevelGenerator {
   ) {
     switch (difficulty) {
       case Difficulty.easy:
+        // Uniform random — open board, varied arrow lengths.
         return candidates[rng.nextInt(candidates.length)];
 
       case Difficulty.medium:
-        return candidates[rng.nextInt(candidates.length)];
+        // Mild preference for medium-length rays (not too open, not edge-only).
+        final sorted = [...candidates]
+          ..sort((a, b) => a.rayLength.compareTo(b.rayLength));
+        // pick from middle 50%
+        final lo = (sorted.length * 0.25).round();
+        final hi = (sorted.length * 0.75).round().clamp(lo + 1, sorted.length);
+        return sorted[lo + rng.nextInt(hi - lo)];
 
       case Difficulty.hard:
-        // Bias toward longer rays (arrows placed early get buried deeper).
-        candidates.sort((a, b) => b.rayLength.compareTo(a.rayLength));
-        final topK = max(1, (candidates.length * 0.3).round());
+        // Bias heavily toward SHORT rays (length 1–2).
+        // Short-ray arrows pack densely: each only needs 1-2 clear cells ahead,
+        // so many can coexist → truly crowded board, hard to untangle order.
+        candidates.sort((a, b) => a.rayLength.compareTo(b.rayLength));
+        // Pick from the shortest 25% of candidates.
+        final topK = max(1, (candidates.length * 0.25).round());
         return candidates[rng.nextInt(topK)];
     }
   }
