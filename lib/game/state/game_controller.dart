@@ -104,6 +104,7 @@ class GameController extends StateNotifier<GameState?> {
       _blockedAt = now;
 
       final newStatus = newLives <= 0 ? GameStatus.outOfLives : GameStatus.playing;
+      if (newStatus == GameStatus.outOfLives) _haptics.heavy();
 
       state = s.copyWith(
         lives: newLives,

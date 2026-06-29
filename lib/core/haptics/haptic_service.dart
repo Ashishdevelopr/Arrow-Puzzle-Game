@@ -6,21 +6,31 @@ class HapticService {
   void setEnabled(bool v) => _enabled = v;
   bool get isEnabled => _enabled;
 
+  // Successful arrow removal — light satisfying tap
   void light() {
-    if (_enabled) HapticFeedback.lightImpact();
+    if (!_enabled) return;
+    HapticFeedback.selectionClick();
   }
 
+  // Blocked arrow tap — noticeable thud
   void medium() {
-    if (_enabled) HapticFeedback.mediumImpact();
+    if (!_enabled) return;
+    HapticFeedback.mediumImpact();
   }
 
-  void heavy() {
-    if (_enabled) HapticFeedback.heavyImpact();
-  }
-
+  // Win — double pulse
   void success() {
     if (!_enabled) return;
     HapticFeedback.mediumImpact();
-    Future.delayed(const Duration(milliseconds: 120), HapticFeedback.lightImpact);
+    Future.delayed(
+      const Duration(milliseconds: 120),
+      HapticFeedback.lightImpact,
+    );
+  }
+
+  // Heavy error — e.g. out of lives
+  void heavy() {
+    if (!_enabled) return;
+    HapticFeedback.heavyImpact();
   }
 }
